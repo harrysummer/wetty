@@ -4,8 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <title>Wetty - The WebTTY Terminal Emulator</title>
-    <script src="/wetty/hterm_all.js"></script>
-    <script src="/wetty/wetty.js"></script>
+    <link rel="icon" type="image/png" href="favicon-100x100.png" sizes="100x100" />
+    <!-- build:js wetty.min.js -->
+    <script src="/bower_components/socket.io-client/socket.io.js"></script>
+    <script src="/bower_components/hterm-umd/index.js"></script>
+    <script src="/src/wetty.js"></script>
+    <!-- endbuild -->
     <style>
         html,
         body {

@@ -1,37 +1,60 @@
 module.exports = function (grunt) {
 
     require('load-grunt-tasks')(grunt);
+    grunt.loadNpmTasks('grunt-contrib-clean');
 
     var config = {
-        mkdir: {
-            tmp: {
-                options: {
-                    create: ['tmp']
-                }
-            }
-        },
-        gitclone: {
-            hterm: {
-                options: {
-                    cwd: './tmp',
-                    repository: 'https://chromium.googlesource.com/apps/libapps'
-                }
-            }
-        },
+        pkg: grunt.file.readJSON('package.json'),
         shell: {
-            build_hterm: {
-                command: 'LIBDOT_SEARCH_PATH=$(pwd) ./libdot/bin/concat.sh -i ./hterm/concat/hterm_all.concat -o ../../public/wetty/hterm_all.js',
+            bowerInstall: {
+                command: 'bower install',
                 options: {
                     execOptions: {
-                        cwd: './tmp/libapps'
+                        cwd: 'client'
                     }
                 }
             }
         },
-        clean: ['./tmp']
+        copy: {
+            main: {
+                src: 'client/src/index.html',
+                dest: 'client/dist/index.html'
+            }
+        },
+        useminPrepare: {
+            html: 'client/dist/index.html',
+            options: {
+                root: 'client',
+                dest: 'client/dist'
+            }
+        },
+        filerev: {
+            images: {
+                src: 'client/assets/*.{jpg,jpeg,gif,png,webp}',
+                dest: 'client/dist'
+            }
+        },
+        usemin: {
+            html: 'client/dist/index.html',
+            options: {
+                assetsDirs: ['client/assets']
+            }
+        },
+        clean: {
+            build: [ '.tmp' ],
+            release: [ 'client/dist' ]
+        }
     };
 
     grunt.initConfig(config);
 
-    grunt.registerTask('update-hterm', ['mkdir:tmp', 'gitclone:hterm', 'shell:build_hterm', 'clean']);
+    grunt.registerTask('init', ['shell:bowerInstall']);
+    grunt.registerTask('build', [
+        'copy',
+        'useminPrepare',
+        'concat:generated',
+        'uglify:generated',
+        'filerev',
+        'usemin'
+    ]);
 };
