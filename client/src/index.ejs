@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Wetty - The WebTTY Terminal Emulator</title>
+    <link rel="icon" type="image/png" href="favicon-100x100.png" sizes="100x100" />
+    <!-- build:js wetty.min.js -->
+    <script src="/bower_components/socket.io-client/socket.io.js"></script>
+    <script src="/bower_components/hterm-umd/index.js"></script>
+    <script src="/src/wetty.js"></script>
+    <!-- endbuild -->
+    <!-- build:js mobile.min.js -->
+    <script src="/bower_components/jquery/dist/jquery.js"></script>
+    <script src="/bower_components/jquery-ui/jquery-ui.js"></script>
+    <script src="/bower_components/jquery-ui/jquery-ui.js"></script>
+    <script src="/bower_components/keyboard/dist/js/jquery.keyboard.min.js"></script>
+    <script src="/bower_components/keyboard/dist/js/jquery.keyboard.extension-mobile.min.js"></script>
+    <script src="/bower_components/keyboard/dist/layouts/keyboard-layouts-combined.min.js"></script>
+    <script src="/src/keyboard.js"></script>
+    <!-- endbuild -->
+    <!-- build:css keyboard.min.css -->
+    <link rel="stylesheet" href="/src/main.css" />
+    <link rel="stylesheet" href="/bower_components/keyboard/dist/css/keyboard.min.css" />
+    <!-- endbuild -->
+</head>
+
+<body>
+    <div id="terminal"></div>
+    <div id="wrap">
+        <input id="keyboard" type="text" />
+    </div>
+</body>
+
+</html>

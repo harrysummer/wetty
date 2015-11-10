@@ -1,4 +1,6 @@
 var express = require('express');
+var device = require('express-device');
+//var bodyParser = require('body-parser');
 var http = require('http');
 var https = require('https');
 var path = require('path');
@@ -80,10 +82,18 @@ process.on('uncaughtException', function(e) {
 var httpserv;
 
 var app = express();
+app.set('view engine', 'ejs');
+app.set('view options', { layout: false });
+app.set('views', __dirname + '/../client/dist/views');
+app.use(device.capture());
+
+app.get('/', function(req, res) {
+    res.render('index.ejs');
+})
 app.get('/ssh/:user', function(req, res) {
-    res.sendfile(__dirname + '/../client/dist/index.html');
+    res.render('index.ejs');
 });
-app.use('/', express.static(path.join(__dirname, '/../client/dist')));
+app.use('/', express.static(path.join(__dirname, '/../client/dist/static')));
 
 if (runhttps) {
     httpserv = https.createServer(opts.ssl, app);
