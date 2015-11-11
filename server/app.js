@@ -5,8 +5,9 @@ var http = require('http');
 var https = require('https');
 var path = require('path');
 var server = require('socket.io');
-var pty = require('pty.js');
+var pty = require('ptyw.js');
 var fs = require('fs');
+var os = require('os');
 
 var opts = require('optimist')
     .options({
@@ -18,17 +19,9 @@ var opts = require('optimist')
             demand: false,
             description: 'path to SSL certificate'
         },
-        sshhost: {
-            demand: false,
-            description: 'ssh server host'
-        },
         sshport: {
             demand: false,
-            description: 'ssh server port'
-        },
-        sshuser: {
-            demand: false,
-            description: 'ssh user'
+            description: 'server port'
         },
         sshauth: {
             demand: false,
@@ -48,24 +41,14 @@ var opts = require('optimist')
 
 var runhttps = false;
 var sshport = 22;
-var sshhost = 'localhost';
 var sshauth = 'password';
-var globalsshuser = '';
 
 if (opts.sshport) {
     sshport = opts.sshport;
 }
 
-if (opts.sshhost) {
-    sshhost = opts.sshhost;
-}
-
 if (opts.sshauth) {
 	sshauth = opts.sshauth
-}
-
-if (opts.sshuser) {
-    globalsshuser = opts.sshuser;
 }
 
 if (opts.sslkey && opts.sslcert) {
@@ -103,54 +86,102 @@ if (runhttps) {
 
 var io = server(httpserv);
 io.on('connection', function(socket){
-    var sshConn = process.getuid() != 0;
-    var sshuser = '';
-    var request = socket.request;
-    console.log((new Date()) + ' Connection accepted.');
-    if (request.url.match('^/ssh/')) {
-        sshConn = true;
-        sshuser = request.resource;
-        sshuser = sshuser.replace('/ssh/', '');
-    }
-    if (sshuser) {
-        sshuser = sshuser + '@';
-    } else if (globalsshuser) {
-        sshuser = globalsshuser + '@';
-    }
+    console.log((new Date()) + ' Connection accepted');
 
-    var term;
-    if (sshConn) {
-         term = pty.spawn('ssh', [sshuser + sshhost, '-p', sshport, '-o', 'PreferredAuthentications=' + sshauth], {
-                name: 'xterm-256color',
-                cols: 80,
-                rows: 30
-            });
-    } else {
-        term = pty.spawn('/bin/login', [], {
-                name: 'xterm-256color',
-                cols: 80,
-                rows: 30
-            });
-    }
-    console.log((new Date()) + " PID=" + term.pid + " STARTED");
-    term.on('data', function(data) {
-        socket.emit('output', data);
-    });
-    term.on('exit', function(code) {
-        console.log((new Date()) + " PID=" + term.pid + " ENDED")
+    socket.on('init', function(data) {
+        var conn_type = data.type;
+        var conn_user = data.user;
+
+        // if conn_type is not specified, infer it from os.type()
+        if (!conn_type) {
+            switch (os.type())
+            {
+            case 'Linux':
+                // If current user is root and not force ssh, then use /bin/login
+                conn_type = process.getuid() == 0 ? 'login' : 'ssh';
+                break;
+
+            case 'Darwin':
+                // TODO: don't know what is correct since I don't have a Mac, use ssh by default
+                conn_type = 'ssh';
+                break;
+
+            case 'Windows_NT':
+                conn_type = 'winrs';
+                break;
+
+            default:
+                console.error('Unkown OS type: ' + os.type());
+                process.exit(1);
+            }
+        }
+
+        var file = null;
+        var argv = null;
+        var opt = null;
+        switch (conn_type) {
+            case 'login':
+                file = '/bin/login';
+                argv = conn_user ? [ conn_user ] : [];
+                opt = {
+                    name: 'xterm-256color',
+                    cols: 80,
+                    rows: 30
+                };
+                break;
+            case 'ssh':
+                file = 'ssh';
+                argv = [ (conn_user ? conn_user + '@' : '') + 'localhost', '-p', sshport, '-o', 'PreferredAuthentications=' + sshauth ];
+                opt = {
+                    name: 'xterm-256color',
+                    cols: 80,
+                    rows: 30
+                };
+                break;
+            case 'winrs':
+                file = 'cmd.exe';
+                argv = [];
+                opt = {
+                    name: 'Windows Shell',
+                    cols: 80,
+                    rows: 30,
+                    cwd: process.env.HOME,
+                    env: process.env
+                };
+                break;
+            default:
+                console.error('Unknown connection type: ' + conn_type);
+                process.exit(1);
+        }
+
+
+        var term = pty.spawn(file, argv, opt);
+
+        term.on('data', function(data) {
+            console.log('term.onData: ' + data);
+            socket.emit('output', data);
+        });
+
+        term.on('exit', function(code) {
+            console.log((new Date()) + " PID=" + term.pid + " ENDED")
+        });
+
+        socket.on('resize', function(data) {
+            term.resize(data.col, data.row);
+        });
+
+        socket.on('input', function(data) {
+            term.write(data);
+        });
+
+        socket.on('disconnect', function() {
+            term.end();
+        });
+
+        console.log((new Date()) + " PID=" + term.pid + " STARTED: " + file + argv.join(' '));
     });
 
-    socket.on('resize', function(data) {
-        term.resize(data.col, data.row);
-    });
 
-    socket.on('input', function(data) {
-        term.write(data);
-    });
-
-    socket.on('disconnect', function() {
-        term.end();
-    });
 });
 
 httpserv.listen(opts.port, opts.bind, function() {

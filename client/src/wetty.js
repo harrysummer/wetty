@@ -25,6 +25,17 @@ Wetty.prototype.onTerminalResize = function(col, row) {
 };
 
 socket.on('connect', function() {
+    var parts = window.location.pathname.split('/');
+    var conn_type = null, conn_user = null;
+    if (parts.length >= 2)
+        conn_type = parts[1];
+    if (parts.length >= 3)
+        conn_user = parts[2];
+    socket.emit('init', {
+        type: conn_type,
+        user: conn_user
+    });
+
     var lib = returnExports.lib;
     var hterm = returnExports.hterm;
     lib.init(function() {
